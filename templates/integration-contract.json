@@ -1,0 +1,19 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "高低压智能电器看板采集接口草案", "version": "0.1.0", "description": "设计契约，当前本地版未实现服务端。网关通过服务端凭据绑定企业和项目，接口不允许控制命令。点位原始值经倍率与偏移量转换后使用标准单位。"},
+  "x-implementation-status": "planned",
+  "paths": {
+    "/api/v1/projects/{projectId}/telemetry": {
+      "post": {
+        "summary": "网关提交已映射的遥测或遥信",
+        "security": [{"gatewayToken": []}],
+        "parameters": [{"name":"projectId","in":"path","required":true,"schema":{"type":"string"}}],
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"type":"object","additionalProperties":false,"required":["pointId","value","timestamp","quality","sequenceId"],"properties":{"pointId":{"type":"string"},"value":{"type":["number","null"]},"timestamp":{"type":"string","format":"date-time","description":"含时区的采集时间"},"quality":{"type":"string","enum":["good","bad","offline"]},"sequenceId":{"type":"string","description":"网关去重键，同键同内容应幂等；同键不同内容拒绝"}}},"example":{"pointId":"PT-01","value":152.3,"timestamp":"2026-10-22T16:00:00+08:00","quality":"good","sequenceId":"GW-01-1001"}}}},
+        "responses": {"202":{"description":"已验证并接收，按采集时间入库；迟到数据不覆盖较新的当前值"},"401":{"description":"网关认证失败"},"403":{"description":"企业或项目不匹配"},"409":{"description":"重复键内容冲突"},"422":{"description":"点位、数值或采集时间不合法"},"429":{"description":"超出速率限制"}}
+      }
+    }
+  },
+  "components":{"securitySchemes":{"gatewayToken":{"type":"http","scheme":"bearer","description":"服务端签发并绑定企业、项目、网关；不得复用模型Key"}}},
+  "x-processing-rules": ["未知不是0；bad或offline不得作为有效读数", "超过配置的采样超时显示stale", "每个对象的计量边界单独确认，避免上下级重复累计", "开关位置编码需现场映射；未配置时保持unknown", "运行状态与人工登记分别保存来源、时间和确认人"],
+  "x-model-config-design": {"fields":["provider","baseUrl","model","secretReference","monthlyLimit"],"secretStorage":"服务端密钥管理，不放在Excel、浏览器localStorage或前端环境变量中", "allowedFunctions":["旧表字段映射建议","导入错误解释","台账问答"],"forbiddenAutomaticWrites":["推断带电或断电状态","补全未确认供电关系","执行远程分合闸"],"review":"映射建议进入导入预览，并经过确定性校验后才允许应用"}
+}
